@@ -97,6 +97,49 @@ async def get_stock_history(
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching history: {str(e)}")
 
 
+@app.get("/calendar/{ticker}")
+async def get_stock_calendar(ticker: str):
+    """
+    Retrieves the upcoming event calendar (earnings, dividends, etc.) for a given ticker.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        # .calendar can return DataFrame or dict
+        calendar_data = stock.calendar
+
+        # Check if data is missing (handles None, empty DataFrame, empty dict)
+        if not calendar_data:
+            raise HTTPException(status_code=404, detail=f"Could not find calendar information for ticker: {ticker}")
+
+        calendar_dict = {}
+        if isinstance(calendar_data, pd.DataFrame):
+            # Convert DataFrame to dictionary
+            calendar_dict = calendar_data.to_dict()
+            # Convert Timestamp values in the dict
+            for key, value_dict in calendar_dict.items():
+                for event, val in value_dict.items():
+                    if isinstance(val, pd.Timestamp):
+                        calendar_dict[key][event] = val.isoformat()
+        elif isinstance(calendar_data, dict):
+            # If it's already a dict, just use it (potentially convert timestamps if needed)
+            calendar_dict = calendar_data
+            # Example: Check top-level values if structure is known/consistent
+            # This part might need adjustment based on the actual dict structure returned by yfinance
+            for key, val in calendar_dict.items():
+                 if isinstance(val, pd.Timestamp):
+                     calendar_dict[key] = val.isoformat()
+                 # Add checks for nested dicts/lists if necessary
+        else:
+             # Should not happen based on yfinance docs, but good practice
+             raise HTTPException(status_code=500, detail="Unexpected data type received for calendar.")
+
+
+        return calendar_dict
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching calendar data: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     # Note: Running with __name__ == "__main__" is for basic testing.
