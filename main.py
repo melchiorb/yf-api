@@ -140,6 +140,54 @@ async def get_stock_calendar(ticker: str):
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching calendar data: {str(e)}")
 
 
+@app.get("/balance-sheet/{ticker}")
+async def get_balance_sheet(ticker: str):
+    """
+    Retrieves the balance sheet for a given ticker.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        balance_sheet_df = stock.balance_sheet
+
+        if balance_sheet_df.empty:
+            raise HTTPException(status_code=404, detail=f"Could not find balance sheet data for ticker: {ticker}")
+
+        # Convert column names (Timestamps) to strings
+        balance_sheet_df.columns = balance_sheet_df.columns.astype(str)
+        # Replace NaN with None for JSON compatibility
+        balance_sheet_df = balance_sheet_df.fillna(value=pd.NA).replace({pd.NA: None})
+        # Convert DataFrame to dict (index becomes keys)
+        balance_sheet_dict = balance_sheet_df.to_dict(orient='index')
+
+        return balance_sheet_dict
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching balance sheet data: {str(e)}")
+
+
+@app.get("/quarterly-income-statement/{ticker}")
+async def get_quarterly_income_statement(ticker: str):
+    """
+    Retrieves the quarterly income statement for a given ticker.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        income_stmt_df = stock.quarterly_income_stmt
+
+        if income_stmt_df.empty:
+            raise HTTPException(status_code=404, detail=f"Could not find quarterly income statement data for ticker: {ticker}")
+
+        # Convert column names (Timestamps) to strings
+        income_stmt_df.columns = income_stmt_df.columns.astype(str)
+        # Replace NaN with None for JSON compatibility
+        income_stmt_df = income_stmt_df.fillna(value=pd.NA).replace({pd.NA: None})
+        # Convert DataFrame to dict (index becomes keys)
+        income_stmt_dict = income_stmt_df.to_dict(orient='index')
+
+        return income_stmt_dict
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching quarterly income statement data: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     # Note: Running with __name__ == "__main__" is for basic testing.
